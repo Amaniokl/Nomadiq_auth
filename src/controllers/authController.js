@@ -95,10 +95,9 @@ export const sendOtpToUserByEmail = async (req, res) => {
     if (!Email) {
       throw new ApiError(400, null, "Email is required");
     }
-
-    // if (email && !isValidEmail(email)) {
-    //   return res.status(400).json({ error: "Invalid email format" });
-    // }
+    if (Email && !isValidEmail(Email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
 
     const user = await User.findOne({ Email });
     if (user) {
@@ -385,4 +384,124 @@ export const logout = async (req, res) => {
   }
 };
 
+export const forgotPasswordByEmailSendOtp = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const Email = email?.trim().toLowerCase();
+    if (!Email) {
+      return res.status(400).json({ error: "Require email " });
+    }
 
+    if (Email && !isValidEmail(Email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    const user = await User.findOne({ Email });
+
+    if (!user) {
+      return res.status(400).json({ error: "User not found in database" })
+    }
+
+    const otp = generateOtp();
+    await redis.setex(`otp:${Email}`, 300, otp);
+
+    await sendEmail(Email, "Password Reset OTP", `Your OTP is ${otp}`);
+
+    res.status(200).json({ message: "OTP sent for password reset." });
+  } catch (error) {
+    console.error("❌ Forgot password error:", error.message);
+    res.status(500).json({ error: "Error sending OTP" });
+  }
+}
+
+export const forgotPasswordByEmailVerifyOtp = async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  try {
+    const Email = email?.trim().toLowerCase();
+    if (!Email) {
+      return res.status(400).json({ error: "Require email " });
+    }
+
+    if (Email && !isValidEmail(Email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    const storedOtp = await redis.get(`otp:${Email}`);
+
+    if (!storedOtp || storedOtp !== otp) {
+      return res.status(400).json({ error: "Invalid or expired OTP" });
+    }
+
+    if (!isValidPassword(newPassword)) {
+      return res.status(400).json({ error: "Password must be at least 8 characters long, should contain one uppercase and lowercase letters" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await User.updateOne({ email: Email }, { password: hashedPassword });
+
+    // Clear OTP after successful verification
+    await redis.del(`otp:${Email}`);
+
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    console.error("❌ Forgot password verification error:", error.message);
+    res.status(500).json({ error: "Error verifying OTP" });
+  }
+}
+
+export const forgotPasswordByPhoneSendOtp = async (req, res) => {
+  const { phone } = req.body;
+  try {
+
+    if (!(phone)) {
+      return res.status(400).json({ error: "Require phone number" });
+    }
+
+    if (phone && !isValidPhone(phone)) {
+      return res.status(400).json({ error: "Invalid phone number" });
+    }
+
+    const user = await User.findOne({ phone });
+
+    if (!user) {
+      return res.status(400).json({ error: "User not found in database" })
+    }
+
+    await sendOTP(phone);
+
+    res.status(200).json({ message: "OTP sent for password reset." });
+  } catch (error) {
+    console.error("❌ Forgot password error:", error.message);
+    res.status(500).json({ error: "Error sending OTP" });
+  }
+}
+
+export const forgotPasswordByPhoneVerifyOtp = async (req, res) => {
+  const { phone, otp, newPassword } = req.body;
+  try {
+    if (!(phone)) {
+      return res.status(400).json({ error: "Require phone number" });
+    }
+
+    if (phone && !isValidPhone(phone)) {
+      return res.status(400).json({ error: "Invalid phone number" });
+    }
+
+    if (!isValidPassword(newPassword)) {
+      return res.status(400).json({ error: "Password must be at least 8 characters long, should contain one uppercase and lowercase letters" });
+    }
+
+    const response = await verifyOTP(phone, otp);
+    if (!response) {
+      return res.status(400).json(new ApiResponse(400, null, "Invalid OTP"));
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await User.updateOne({ phone }, { password: hashedPassword });
+
+    res.status(200).json(new ApiResponse(200, null, "Password reset successfully"));
+  } catch (error) {
+    console.error("❌ Forgot password verification error:", error.message);
+    res.status(500).json({ error: "Error verifying OTP" });
+  }
+}
