@@ -14,4 +14,9 @@ router.post("/loginemail", loginEmail);
 router.post("/logout", logout)
 router.post("/refreshtoken", refreshAccessToken)
 router.get("/verifytoken", authenticateJWT, verifyToken);
+router.post("/forgotpasswordmail", forgotPasswordByEmailSendOtp)
+router.post("/resetpasswordmail", forgotPasswordByEmailVerifyOtp)
+router.post("/forgotpasswordphone", forgotPasswordByPhoneSendOtp)
+router.post("/resetpasswordphone", forgotPasswordByPhoneVerifyOtp)
+
 export default router;
