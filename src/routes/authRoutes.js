@@ -1,5 +1,6 @@
 import express from 'express';
-import { loginEmail, loginPhone, logout, refreshAccessToken, sendOtpToUserByEmail, sendOtpToUserByPhone, verifyOtpEmailRegister, verifyOtpNumberRegister } from '../controllers/authController.js';
+import { loginEmail, loginPhone, logout, refreshAccessToken, sendOtpToUserByEmail, sendOtpToUserByPhone, verifyOtpEmailRegister, verifyOtpNumberRegister, verifyToken } from '../controllers/authController.js';
+import { authenticateJWT } from "../middlewares/auth.js";
 
 const router = express.Router();
 
@@ -12,4 +13,5 @@ router.post("/loginphone", loginPhone);
 router.post("/loginemail", loginEmail);
 router.post("/logout", logout)
 router.post("/refreshtoken", refreshAccessToken)
+router.get("/verifytoken", authenticateJWT, verifyToken);
 export default router;
