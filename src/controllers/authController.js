@@ -384,6 +384,10 @@ export const logout = async (req, res) => {
   }
 };
 
+export const verifyToken = (req, res) => {
+  res.status(200).json({ user: req.user });
+};
+
 export const forgotPasswordByEmailSendOtp = async (req, res) => {
   const { email } = req.body;
   try {
